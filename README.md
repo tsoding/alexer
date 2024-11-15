@@ -5,6 +5,7 @@ Very basic lexer for very basic cases
 ## Quick Start
 
 ```c
+// example.c
 #define ALEXER_IMPLEMENTATION
 #include "alexer.h"
 
@@ -36,4 +37,16 @@ int main()
     if (!alexer_expect_kind(&l, t, ALEXER_END)) return 1;
     return 0;
 }
+```
+
+```console
+$ cc -Wall -Wextra -Wswitch-enum -ggdb -o example example.c
+$ ./example
+example/path:1:1: INFO: SYMBOL: a
+example/path:1:3: INFO: PUNCT: +
+example/path:1:5: INFO: PUNCT: (
+example/path:1:6: INFO: INT: 35
+example/path:1:8: INFO: PUNCT: *
+example/path:1:9: INFO: INT: 45
+example/path:1:11: INFO: PUNCT: )
 ```
