@@ -74,8 +74,10 @@ int main()
 ```
 
 ```console
-$ cc -Wall -Wextra -Wswitch-enum -ggdb -o example example.c
-$ ./example
+$ cc -o nob nob.c
+$ ./nob
+[INFO] CMD: cc -Wall -Wextra -Wswitch-enum -ggdb -o example example.c
+[INFO] CMD: ./example
 example/path:2:1: INFO: KEYWORD: if
 example/path:2:4: INFO: PUNCT: (
 example/path:2:5: INFO: SYMBOL: a
