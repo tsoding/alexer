@@ -1,6 +1,6 @@
 # Alexer
 
-Very basic lexer for very basic cases .
+Very basic lexer for very basic cases. Don't expect it to be fast or super flexible.
 
 ## Quick Start
 

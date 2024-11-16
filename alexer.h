@@ -89,7 +89,7 @@ const char *alexer_kind_names[ALEXER_COUNT_KINDS] = {
     [ALEXER_PUNCT]   = "PUNCT",
     [ALEXER_STRING]  = "STRING",
 };
-#define alexer_kind_name(kind) (assert(0 <= kind && kind < ALEXER_COUNT_KINDS), alexer_kind_names[kind])
+#define alexer_kind_name(kind) (ALEXER_ASSERT(0 <= kind && kind < ALEXER_COUNT_KINDS), alexer_kind_names[kind])
 
 typedef struct {
     long kind;
@@ -117,6 +117,8 @@ typedef struct {
     size_t puncts_count;
     const char **keywords;
     size_t keywords_count;
+    const char **single_line_comments;
+    size_t single_line_comments_count;
     void (*diagf)(Alexer_Loc loc, const char *level, const char *fmt, ...);
 } Alexer;
 
@@ -227,14 +229,17 @@ void alexer_drop_until_endline(Alexer *l)
 
 bool alexer_get_token(Alexer *l, Alexer_Token *t)
 {
+another_trim_round:
     while (l->cur < l->size) {
         alexer_trim_left_ws(l);
 
-        // TODO: configurable comments
         // TODO: multiline comments
-        if (alexer_starts_with(l, "//", 2)) {
-            alexer_drop_until_endline(l);
-            continue;
+        for (size_t i = 0; i < l->single_line_comments_count; ++i) {
+            size_t n = strlen(l->single_line_comments[i]);
+            if (alexer_starts_with(l, l->single_line_comments[i], n)) {
+                alexer_drop_until_endline(l);
+                goto another_trim_round;
+            }
         }
         break;
     }
@@ -307,7 +312,7 @@ bool alexer_expect_one_of_puncts(Alexer *l, Alexer_Token t, size_t *punct_indice
 {
     bool result = false;
     Alexer_String_Builder sb = {0};
-    assert(punct_indices_count > 0);
+    ALEXER_ASSERT(punct_indices_count > 0);
     if (!alexer_expect_kind(l, t, ALEXER_PUNCT)) alexer_return_defer(false);
     for (size_t i = 0; i < punct_indices_count; ++i) {
         if (t.punct_index == punct_indices[i]) {
@@ -317,14 +322,14 @@ bool alexer_expect_one_of_puncts(Alexer *l, Alexer_Token t, size_t *punct_indice
 
     for (size_t i = 0; i < punct_indices_count; ++i) {
         if (i > 0) alexer_sb_append_cstr(&sb, ", ");
-        assert(punct_indices[i] < l->puncts_count);
+        ALEXER_ASSERT(punct_indices[i] < l->puncts_count);
         alexer_sb_append_cstr(&sb, "`");
         alexer_sb_append_cstr(&sb, l->puncts[punct_indices[i]]);
         alexer_sb_append_cstr(&sb, "`");
     }
     alexer_sb_append_null(&sb);
 
-    assert(t.punct_index < l->puncts_count);
+    ALEXER_ASSERT(t.punct_index < l->puncts_count);
     l->diagf(t.loc, "ERROR", "Expected %s but got `%s`", sb.items, l->puncts[t.punct_index]);
 
 defer:
@@ -341,7 +346,7 @@ bool alexer_expect_one_of_keywords(Alexer *l, Alexer_Token t, size_t *keyword_in
 {
     bool result = false;
     Alexer_String_Builder sb = {0};
-    assert(keyword_indices_count > 0);
+    ALEXER_ASSERT(keyword_indices_count > 0);
     if (!alexer_expect_kind(l, t, ALEXER_KEYWORD)) return false;
     for (size_t i = 0; i < keyword_indices_count; ++i) {
         if (t.keyword_index == keyword_indices[i]) {
@@ -351,14 +356,14 @@ bool alexer_expect_one_of_keywords(Alexer *l, Alexer_Token t, size_t *keyword_in
 
     for (size_t i = 0; i < keyword_indices_count; ++i) {
         if (i > 0) alexer_sb_append_cstr(&sb, ", ");
-        assert(keyword_indices[i] < l->keywords_count);
+        ALEXER_ASSERT(keyword_indices[i] < l->keywords_count);
         alexer_sb_append_cstr(&sb, "`");
         alexer_sb_append_cstr(&sb, l->keywords[keyword_indices[i]]);
         alexer_sb_append_cstr(&sb, "`");
     }
     alexer_sb_append_null(&sb);
 
-    assert(t.keyword_index < l->keywords_count);
+    ALEXER_ASSERT(t.keyword_index < l->keywords_count);
     if (keyword_indices_count == 1) {
         l->diagf(t.loc, "ERROR", "Expected keyword %s but got keyword `%s`", sb.items, l->keywords[t.keyword_index]);
     } else {
