@@ -5,7 +5,6 @@ Very basic lexer for very basic cases
 ## Quick Start
 
 ```c
-// example.c
 #define ALEXER_IMPLEMENTATION
 #include "alexer.h"
 
@@ -25,7 +24,7 @@ const char *puncts[] = {
 
 int main()
 {
-    const char *file_path = "example/path"; // No file is specified for this example
+    const char *file_path = "example/path"; // The file path is only needed for diagnostic message
     const char *content = "a + (35*45)";
     Alexer l = alexer_create(file_path, content, strlen(content));
     l.puncts = puncts;
