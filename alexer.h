@@ -28,27 +28,27 @@ typedef struct {
 #endif
 
 // Append several items to a dynamic array
-#define alexer_da_append_many(da, new_items, new_items_count)                                  \
-    do {                                                                                    \
-        if ((da)->count + (new_items_count) > (da)->capacity) {                               \
-            if ((da)->capacity == 0) {                                                      \
-                (da)->capacity = ALEXER_DA_INIT_CAP;                                           \
-            }                                                                               \
-            while ((da)->count + (new_items_count) > (da)->capacity) {                        \
-                (da)->capacity *= 2;                                                        \
-            }                                                                               \
-            (da)->items = ALEXER_REALLOC((da)->items, (da)->capacity*sizeof(*(da)->items)); \
-            ALEXER_ASSERT((da)->items != NULL && "Buy more RAM lol");                          \
-        }                                                                                   \
+#define alexer_da_append_many(da, new_items, new_items_count)                                   \
+    do {                                                                                        \
+        if ((da)->count + (new_items_count) > (da)->capacity) {                                 \
+            if ((da)->capacity == 0) {                                                          \
+                (da)->capacity = ALEXER_DA_INIT_CAP;                                            \
+            }                                                                                   \
+            while ((da)->count + (new_items_count) > (da)->capacity) {                          \
+                (da)->capacity *= 2;                                                            \
+            }                                                                                   \
+            (da)->items = ALEXER_REALLOC((da)->items, (da)->capacity*sizeof(*(da)->items));     \
+            ALEXER_ASSERT((da)->items != NULL && "Buy more RAM lol");                           \
+        }                                                                                       \
         memcpy((da)->items + (da)->count, (new_items), (new_items_count)*sizeof(*(da)->items)); \
-        (da)->count += (new_items_count);                                                     \
+        (da)->count += (new_items_count);                                                       \
     } while (0)
 
 // Append a NULL-terminated string to a string builder
 #define alexer_sb_append_cstr(sb, cstr)  \
-    do {                              \
-        const char *s = (cstr);       \
-        size_t n = strlen(s);         \
+    do {                                 \
+        const char *s = (cstr);          \
+        size_t n = strlen(s);            \
         alexer_da_append_many(sb, s, n); \
     } while (0)
 
@@ -102,6 +102,11 @@ typedef struct {
 } Alexer_Token;
 
 typedef struct {
+    const char *opening;
+    const char *closing;
+} Alexer_ML_Comments;
+
+typedef struct {
     const char *file_path;
     const char *content;
     size_t size;
@@ -117,8 +122,10 @@ typedef struct {
     size_t puncts_count;
     const char **keywords;
     size_t keywords_count;
-    const char **single_line_comments;
-    size_t single_line_comments_count;
+    const char **sl_comments;
+    size_t sl_comments_count;
+    Alexer_ML_Comments *ml_comments;
+    size_t ml_comments_count;
     void (*diagf)(Alexer_Loc loc, const char *level, const char *fmt, ...);
 } Alexer;
 
@@ -136,7 +143,6 @@ void alexer_drop_until_endline(Alexer *l);
 Alexer_Loc alexer_loc(Alexer *l);
 bool alexer_is_symbol(char x); // TODO: Configurable alexer_is_symbol()
 bool alexer_is_symbol_start(char x); // TODO: Configurable alexer_is_symbol_start()
-bool alexer_starts_with(Alexer *l, const char *prefix, size_t len);
 // alexer_get_token()
 //   Gets the next token. Returns false on END or INVALID. Returns true on any other kind of token.
 void alexer_default_diagf(Alexer_Loc loc, const char *level, const char *fmt, ...);
@@ -208,9 +214,9 @@ bool alexer_is_symbol_start(char x)
     return isalpha(x) || x == '_';
 }
 
-bool alexer_starts_with(Alexer *l, const char *prefix, size_t len)
+bool alexer_starts_with_cstr(Alexer *l, const char *prefix)
 {
-    for (size_t i = 0; l->cur + i < l->size && i < len; ++i) {
+    for (size_t i = 0; l->cur + i < l->size && prefix[i] != '\0'; ++i) {
         if (l->content[l->cur + i] != prefix[i]) {
             return false;
         }
@@ -227,21 +233,39 @@ void alexer_drop_until_endline(Alexer *l)
     }
 }
 
+// TODO: multiline comments are not nestable
+void alexer_chop_until_prefix(Alexer *l, const char *prefix)
+{
+    while (l->cur < l->size && !alexer_starts_with_cstr(l, prefix)) {
+        alexer_chop_char(l);
+    }
+}
+
 bool alexer_get_token(Alexer *l, Alexer_Token *t)
 {
 another_trim_round:
     while (l->cur < l->size) {
         alexer_trim_left_ws(l);
 
-        // TODO: multiline comments
-        for (size_t i = 0; i < l->single_line_comments_count; ++i) {
-            size_t n = strlen(l->single_line_comments[i]);
-            if (alexer_starts_with(l, l->single_line_comments[i], n)) {
+        for (size_t i = 0; i < l->sl_comments_count; ++i) {
+            if (alexer_starts_with_cstr(l, l->sl_comments[i])) {
                 alexer_drop_until_endline(l);
                 goto another_trim_round;
             }
         }
-        break;
+
+        for (size_t i = 0; i < l->ml_comments_count; ++i) {
+            const char *opening = l->ml_comments[i].opening;
+            const char *closing = l->ml_comments[i].closing;
+            if (alexer_starts_with_cstr(l, opening)) {
+                alexer_chop_chars(l, strlen(opening));
+                alexer_chop_until_prefix(l, closing);
+                alexer_chop_chars(l, strlen(closing));
+                goto another_trim_round;
+            }
+        }
+
+        break; // trimmed everything we could
     }
 
     memset(t, 0, sizeof(*t));
@@ -256,8 +280,8 @@ another_trim_round:
 
     // Puncts
     for (size_t i = 0; i < l->puncts_count; ++i) {
-        size_t n = strlen(l->puncts[i]);
-        if (alexer_starts_with(l, l->puncts[i], n)) {
+        if (alexer_starts_with_cstr(l, l->puncts[i])) {
+            size_t n = strlen(l->puncts[i]);
             t->kind = ALEXER_PUNCT;
             t->punct_index = i;
             t->end += n;

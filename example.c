@@ -15,13 +15,13 @@ typedef enum {
 
 static_assert(COUNT_PUNCTS == 8, "Amount of puncts have changed");
 const char *puncts[COUNT_PUNCTS] = {
-    [PUNCT_PLUS] = "+",
-    [PUNCT_MULT] = "*",
-    [PUNCT_OPAREN] = "(",
-    [PUNCT_CPAREN] = ")",
-    [PUNCT_OCURLY] = "{",
-    [PUNCT_CCURLY] = "}",
-    [PUNCT_EQUALS] = "==",
+    [PUNCT_PLUS]      = "+",
+    [PUNCT_MULT]      = "*",
+    [PUNCT_OPAREN]    = "(",
+    [PUNCT_CPAREN]    = ")",
+    [PUNCT_OCURLY]    = "{",
+    [PUNCT_CCURLY]    = "}",
+    [PUNCT_EQUALS]    = "==",
     [PUNCT_SEMICOLON] = ";",
 };
 
@@ -33,13 +33,17 @@ typedef enum {
 
 static_assert(COUNT_KEYWORDS == 2, "Amount of keywords have changed");
 const char *keywords[COUNT_KEYWORDS] = {
-    [KEYWORD_IF] = "if",
+    [KEYWORD_IF]     = "if",
     [KEYWORD_RETURN] = "return",
 };
 
-const char *single_line_comments[] = {
+const char *sl_comments[] = {
     "//",
     "#",
+};
+
+Alexer_ML_Comments ml_comments[] = {
+    {"/*", "*/"},
 };
 
 int main()
@@ -48,6 +52,10 @@ int main()
     const char *content =
         "#include <stdio.h>\n"
         "if (a == 17*2 + 35) { // single line comment\n"
+        "    /* multi\n"
+        "     * line\n"
+        "     * comment\n"
+        "     */\n"
         "    return b;\n"
         "}\n";
     Alexer l = alexer_create(file_path, content, strlen(content));
@@ -55,8 +63,10 @@ int main()
     l.puncts_count = ALEXER_ARRAY_LEN(puncts);
     l.keywords = keywords;
     l.keywords_count = ALEXER_ARRAY_LEN(keywords);
-    l.single_line_comments = single_line_comments;
-    l.single_line_comments_count = ALEXER_ARRAY_LEN(single_line_comments);
+    l.sl_comments = sl_comments;
+    l.sl_comments_count = ALEXER_ARRAY_LEN(sl_comments);
+    l.ml_comments = ml_comments;
+    l.ml_comments_count = ALEXER_ARRAY_LEN(ml_comments);
     Alexer_Token t = {0};
     while (alexer_get_token(&l, &t)) {
         l.diagf(t.loc, "INFO", "%s: %.*s", alexer_kind_name(t.kind), t.end - t.begin, t.begin);
