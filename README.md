@@ -76,9 +76,9 @@ int main()
     l.ml_comments_count = ALEXER_ARRAY_LEN(ml_comments);
     Alexer_Token t = {0};
     while (alexer_get_token(&l, &t)) {
-        l.diagf(t.loc, "INFO", "%s: %.*s", alexer_kind_name(t.kind), t.end - t.begin, t.begin);
+        l.diagf(t.loc, "INFO", "%s: %.*s", alexer_kind_name(ALEXER_KIND(t.id)), t.end - t.begin, t.begin);
     }
-    if (!alexer_expect_kind(&l, t, ALEXER_END)) return 1;
+    if (!alexer_expect_id(&l, t, ALEXER_END)) return 1;
     return 0;
 }
 ```
