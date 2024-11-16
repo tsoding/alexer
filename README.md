@@ -14,14 +14,20 @@ typedef enum {
     PUNCT_EQUALS,
     PUNCT_OPAREN,
     PUNCT_CPAREN,
+    PUNCT_OCURLY,
+    PUNCT_CCURLY,
     PUNCT_SEMICOLON,
+    COUNT_PUNCTS,
 } Punct_Index;
 
-const char *puncts[] = {
+static_assert(COUNT_PUNCTS == 8, "Amount of puncts have changed");
+const char *puncts[COUNT_PUNCTS] = {
     [PUNCT_PLUS] = "+",
     [PUNCT_MULT] = "*",
     [PUNCT_OPAREN] = "(",
     [PUNCT_CPAREN] = ")",
+    [PUNCT_OCURLY] = "{",
+    [PUNCT_CCURLY] = "}",
     [PUNCT_EQUALS] = "==",
     [PUNCT_SEMICOLON] = ";",
 };
@@ -29,22 +35,35 @@ const char *puncts[] = {
 typedef enum {
     KEYWORD_IF,
     KEYWORD_RETURN,
+    COUNT_KEYWORDS,
 } Keyword_Index;
 
-const char *keywords[] = {
+static_assert(COUNT_KEYWORDS == 2, "Amount of keywords have changed");
+const char *keywords[COUNT_KEYWORDS] = {
     [KEYWORD_IF] = "if",
     [KEYWORD_RETURN] = "return",
+};
+
+const char *single_line_comments[] = {
+    "//",
+    "#",
 };
 
 int main()
 {
     const char *file_path = "example/path"; // The file path is only needed for diagnostic message
-    const char *content = "if (a == 17*2 + 35) return b;";
+    const char *content =
+        "#include <stdio.h>\n"
+        "if (a == 17*2 + 35) { // single line comment\n"
+        "    return b;\n"
+        "}\n";
     Alexer l = alexer_create(file_path, content, strlen(content));
     l.puncts = puncts;
     l.puncts_count = ALEXER_ARRAY_LEN(puncts);
     l.keywords = keywords;
     l.keywords_count = ALEXER_ARRAY_LEN(keywords);
+    l.single_line_comments = single_line_comments;
+    l.single_line_comments_count = ALEXER_ARRAY_LEN(single_line_comments);
     Alexer_Token t = {0};
     while (alexer_get_token(&l, &t)) {
         l.diagf(t.loc, "INFO", "%s: %.*s", alexer_kind_name(t.kind), t.end - t.begin, t.begin);
@@ -57,17 +76,19 @@ int main()
 ```console
 $ cc -Wall -Wextra -Wswitch-enum -ggdb -o example example.c
 $ ./example
-example/path:1:1: INFO: KEYWORD: if
-example/path:1:4: INFO: PUNCT: (
-example/path:1:5: INFO: SYMBOL: a
-example/path:1:7: INFO: PUNCT: ==
-example/path:1:10: INFO: INT: 17
-example/path:1:12: INFO: PUNCT: *
-example/path:1:13: INFO: INT: 2
-example/path:1:15: INFO: PUNCT: +
-example/path:1:17: INFO: INT: 35
-example/path:1:19: INFO: PUNCT: )
-example/path:1:21: INFO: KEYWORD: return
-example/path:1:28: INFO: SYMBOL: b
-example/path:1:29: INFO: PUNCT: ;
+example/path:2:1: INFO: KEYWORD: if
+example/path:2:4: INFO: PUNCT: (
+example/path:2:5: INFO: SYMBOL: a
+example/path:2:7: INFO: PUNCT: ==
+example/path:2:10: INFO: INT: 17
+example/path:2:12: INFO: PUNCT: *
+example/path:2:13: INFO: INT: 2
+example/path:2:15: INFO: PUNCT: +
+example/path:2:17: INFO: INT: 35
+example/path:2:19: INFO: PUNCT: )
+example/path:2:21: INFO: PUNCT: {
+example/path:3:5: INFO: KEYWORD: return
+example/path:3:12: INFO: SYMBOL: b
+example/path:3:13: INFO: PUNCT: ;
+example/path:4:1: INFO: PUNCT: }
 ```
