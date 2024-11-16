@@ -407,7 +407,7 @@ bool alexer_expect_id(Alexer *l, Alexer_Token t, uint64_t id)
 
 bool alexer_expect_one_of_ids(Alexer *l, Alexer_Token t, uint64_t *ids, size_t ids_count)
 {
-    bool result = true;
+    bool result = false;
     Alexer_String_Builder sb = {0};
 
     for (size_t i = 0; i < ids_count; ++i) {
