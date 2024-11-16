@@ -74,6 +74,7 @@ typedef enum {
     ALEXER_SYMBOL,
     ALEXER_KEYWORD,
     ALEXER_PUNCT,
+    // TODO: add support for strings
     ALEXER_STRING,
     ALEXER_COUNT_KINDS,
 } Alexer_Kind;
@@ -109,6 +110,9 @@ typedef struct {
     size_t bol;
     size_t row;
 
+    // TODO: Document properly which order puncts should be in.
+    // If one of the puncts is a prefix of another one, the longer one should come first.
+    // Maybe we can sort them for the user like that automatically somehow?
     const char **puncts;
     size_t puncts_count;
     const char **keywords;
@@ -116,19 +120,25 @@ typedef struct {
     void (*diagf)(Alexer_Loc loc, const char *level, const char *fmt, ...);
 } Alexer;
 
-void alexer_default_diagf(Alexer_Loc loc, const char *level, const char *fmt, ...);
-void alexer_ignore_diagf(Alexer_Loc loc, const char *level, const char *fmt, ...);
+// TODO: Implement peek?
+// I'm not sure about this one. It adds complexity, but you can kind of live without it
+// if you just pre-tokenizer everything into a dynamic array and just parse that instead.
+// And that gives you longer look-ahead than just being able to peek into the next token.
+
 Alexer alexer_create(const char *file_path, const char *content, size_t size);
+bool alexer_get_token(Alexer *l, Alexer_Token *t);
 bool alexer_chop_char(Alexer *l);
 void alexer_chop_chars(Alexer *l, size_t n);
 void alexer_trim_left_ws(Alexer *l);
+void alexer_drop_until_endline(Alexer *l);
 Alexer_Loc alexer_loc(Alexer *l);
 bool alexer_is_symbol(char x); // TODO: Configurable alexer_is_symbol()
 bool alexer_is_symbol_start(char x); // TODO: Configurable alexer_is_symbol_start()
 bool alexer_starts_with(Alexer *l, const char *prefix, size_t len);
 // alexer_get_token()
 //   Gets the next token. Returns false on END or INVALID. Returns true on any other kind of token.
-bool alexer_get_token(Alexer *l, Alexer_Token *t);
+void alexer_default_diagf(Alexer_Loc loc, const char *level, const char *fmt, ...);
+void alexer_ignore_diagf(Alexer_Loc loc, const char *level, const char *fmt, ...);
 bool alexer_expect_kind(Alexer *l, Alexer_Token t, Alexer_Kind kind);
 bool alexer_expect_one_of_kinds(Alexer *l, Alexer_Token t, Alexer_Kind *kinds, size_t kinds_size);
 bool alexer_expect_punct(Alexer *l, Alexer_Token t, size_t punct_index);
@@ -206,9 +216,28 @@ bool alexer_starts_with(Alexer *l, const char *prefix, size_t len)
     return true;
 }
 
+void alexer_drop_until_endline(Alexer *l)
+{
+    while (l->cur < l->size) {
+        char x = l->content[l->cur];
+        alexer_chop_char(l);
+        if (x == '\n') break;
+    }
+}
+
 bool alexer_get_token(Alexer *l, Alexer_Token *t)
 {
-    alexer_trim_left_ws(l);
+    while (l->cur < l->size) {
+        alexer_trim_left_ws(l);
+
+        // TODO: configurable comments
+        // TODO: multiline comments
+        if (alexer_starts_with(l, "//", 2)) {
+            alexer_drop_until_endline(l);
+            continue;
+        }
+        break;
+    }
 
     memset(t, 0, sizeof(*t));
     t->loc = alexer_loc(l);
