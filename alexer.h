@@ -101,10 +101,22 @@ typedef struct {
     size_t keyword_index;
 } Alexer_Token;
 
+bool alexer_token_text_equal(Alexer_Token a, Alexer_Token b);
+bool alexer_token_text_equal_cstr(Alexer_Token a, const char *b);
+
+#define Alexer_Token_Fmt "%.*s"
+#define Alexer_Token_Arg(t) (int)((t).end - (t).begin), (t).begin
+
 typedef struct {
     const char *opening;
     const char *closing;
 } Alexer_ML_Comments;
+
+typedef struct {
+    size_t cur;
+    size_t bol;
+    size_t row;
+} Alexer_State;
 
 typedef struct {
     const char *file_path;
@@ -136,6 +148,8 @@ typedef struct {
 
 Alexer alexer_create(const char *file_path, const char *content, size_t size);
 bool alexer_get_token(Alexer *l, Alexer_Token *t);
+Alexer_State alexer_save(Alexer *l);
+void alexer_rewind(Alexer *l, Alexer_State s);
 bool alexer_chop_char(Alexer *l);
 void alexer_chop_chars(Alexer *l, size_t n);
 void alexer_trim_left_ws(Alexer *l);
@@ -447,6 +461,38 @@ void alexer_ignore_diagf(Alexer_Loc loc, const char *level, const char *fmt, ...
     (void) loc;
     (void) level;
     (void) fmt;
+}
+
+bool alexer_token_text_equal(Alexer_Token a, Alexer_Token b)
+{
+    size_t na = a.end - a.begin;
+    size_t nb = b.end - b.begin;
+    if (na != nb) return false;
+    return memcmp(a.begin, b.begin, na) == 0;
+}
+
+bool alexer_token_text_equal_cstr(Alexer_Token a, const char *b)
+{
+    size_t na = a.end - a.begin;
+    size_t nb = strlen(b);
+    if (na != nb) return false;
+    return memcmp(a.begin, b, na) == 0;
+}
+
+Alexer_State alexer_save(Alexer *l)
+{
+    return (Alexer_State) {
+        .cur = l->cur,
+        .bol = l->bol,
+        .row = l->row,
+    };
+}
+
+void alexer_rewind(Alexer *l, Alexer_State s)
+{
+    l->cur = s.cur;
+    l->bol = s.bol;
+    l->row = s.row;
 }
 
 #endif // ALEXER_IMPLEMENTATION
