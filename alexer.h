@@ -145,12 +145,9 @@ typedef struct {
     void (*diagf)(Alexer_Loc loc, const char *level, const char *fmt, ...);
 } Alexer;
 
-// TODO: Implement peek?
-// I'm not sure about this one. It adds complexity, but you can kind of live without it
-// if you just pre-tokenizer everything into a dynamic array and just parse that instead.
-// And that gives you longer look-ahead than just being able to peek into the next token.
-
 Alexer alexer_create(const char *file_path, const char *content, size_t size);
+// alexer_get_token()
+//   Gets the next token. Returns false on END or INVALID. Returns true on any other kind of token.
 bool alexer_get_token(Alexer *l, Alexer_Token *t);
 Alexer_State alexer_save(Alexer *l);
 void alexer_rewind(Alexer *l, Alexer_State s);
@@ -161,8 +158,6 @@ void alexer_drop_until_endline(Alexer *l);
 Alexer_Loc alexer_loc(Alexer *l);
 bool alexer_is_symbol(char x); // TODO: Configurable alexer_is_symbol()
 bool alexer_is_symbol_start(char x); // TODO: Configurable alexer_is_symbol_start()
-// alexer_get_token()
-//   Gets the next token. Returns false on END or INVALID. Returns true on any other kind of token.
 void alexer_default_diagf(Alexer_Loc loc, const char *level, const char *fmt, ...);
 void alexer_ignore_diagf(Alexer_Loc loc, const char *level, const char *fmt, ...);
 bool alexer_expect_id(Alexer *l, Alexer_Token t, uint64_t id);
