@@ -80,7 +80,7 @@ typedef enum {
     ALEXER_SYMBOL,
     ALEXER_KEYWORD,
     ALEXER_PUNCT,
-    // TODO: add support for strings
+    // TODO: Add support for strings of different customizable types
     ALEXER_STRING,
     ALEXER_COUNT_KINDS,
 } Alexer_Kind;
@@ -400,6 +400,7 @@ bool alexer_expect_id(Alexer *l, Alexer_Token t, uint64_t id)
     return alexer_expect_one_of_ids(l, t, &id, 1);
 }
 
+// TODO: Reserve a special index value of the id as "any index". Potentially 0xFFFFFFFF.
 bool alexer_expect_one_of_ids(Alexer *l, Alexer_Token t, uint64_t *ids, size_t ids_count)
 {
     bool result = false;
