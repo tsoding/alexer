@@ -19,9 +19,15 @@ typedef struct {
     size_t capacity;
 } Alexer_String_Builder;
 
+#ifndef ALEXER_ASSERT
 #define ALEXER_ASSERT assert
+#endif // ALEXER_ASSERT
+#ifndef ALEXER_REALLOC
 #define ALEXER_REALLOC realloc
+#endif // ALEXER_REALLOC
+#ifndef ALEXER_FREE
 #define ALEXER_FREE free
+#endif // ALEXER_FREE
 
 // Initial capacity of a dynamic array
 #ifndef ALEXER_DA_INIT_CAP
