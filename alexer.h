@@ -148,6 +148,8 @@ typedef struct {
     size_t sl_comments_count;
     Alexer_ML_Comments *ml_comments;
     size_t ml_comments_count;
+    bool (*is_symbol_start)(char x);
+    bool (*is_symbol)(char x);
     void (*diagf)(Alexer_Loc loc, const char *level, const char *fmt, ...);
 } Alexer;
 
@@ -162,8 +164,8 @@ void alexer_chop_chars(Alexer *l, size_t n);
 void alexer_trim_left_ws(Alexer *l);
 void alexer_drop_until_endline(Alexer *l);
 Alexer_Loc alexer_loc(Alexer *l);
-bool alexer_is_symbol(char x); // TODO: Configurable alexer_is_symbol()
-bool alexer_is_symbol_start(char x); // TODO: Configurable alexer_is_symbol_start()
+bool alexer_default_is_symbol(char x);
+bool alexer_default_is_symbol_start(char x);
 void alexer_default_diagf(Alexer_Loc loc, const char *level, const char *fmt, ...);
 void alexer_ignore_diagf(Alexer_Loc loc, const char *level, const char *fmt, ...);
 bool alexer_expect_id(Alexer *l, Alexer_Token t, uint64_t id);
@@ -180,6 +182,8 @@ Alexer alexer_create(const char *file_path, const char *content, size_t size)
         .content = content,
         .size = size,
         .diagf = alexer_default_diagf,
+        .is_symbol = alexer_default_is_symbol,
+        .is_symbol_start = alexer_default_is_symbol_start,
     };
 }
 
@@ -219,12 +223,12 @@ Alexer_Loc alexer_loc(Alexer *l)
     };
 }
 
-bool alexer_is_symbol(char x)
+bool alexer_default_is_symbol(char x)
 {
     return isalnum(x) || x == '_';
 }
 
-bool alexer_is_symbol_start(char x)
+bool alexer_default_is_symbol_start(char x)
 {
     return isalpha(x) || x == '_';
 }
@@ -316,9 +320,9 @@ another_trim_round:
     }
 
     // Symbol
-    if (alexer_is_symbol_start(l->content[l->cur])) {
+    if (l->is_symbol_start(l->content[l->cur])) {
         t->id = ALEXER_SYMBOL;
-        while (l->cur < l->size && alexer_is_symbol(l->content[l->cur])) {
+        while (l->cur < l->size && l->is_symbol(l->content[l->cur])) {
             t->end += 1;
             alexer_chop_char(l);
         }
