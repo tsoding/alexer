@@ -52,6 +52,7 @@ int main()
     const char *content =
         "#include <stdio.h>\n"
         "if (a == 17*2 + 35) { // single line comment\n"
+        "if (x == 0xff) {      // testing hex support\n"
         "    /* multi\n"
         "     * line\n"
         "     * comment\n"
