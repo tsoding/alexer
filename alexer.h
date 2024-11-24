@@ -9,6 +9,7 @@
 #include <string.h>
 #include <ctype.h>
 #include <stdarg.h>
+#include <limits.h>
 
 #define ALEXER_ARRAY_LEN(xs) (sizeof(xs)/(sizeof((xs)[0])))
 #define alexer_return_defer(value) do { result = (value); goto defer; } while(0)
@@ -171,6 +172,9 @@ void alexer_ignore_diagf(Alexer_Loc loc, const char *level, const char *fmt, ...
 bool alexer_expect_id(Alexer *l, Alexer_Token t, uint64_t id);
 bool alexer_expect_one_of_ids(Alexer *l, Alexer_Token t, uint64_t *ids, size_t ids_count);
 
+// Helper function to check if char is a hex digit
+static bool alexer_is_hex_digit(char c);
+
 #endif // ALEXER_H_
 
 #ifdef ALEXER_IMPLEMENTATION
@@ -311,10 +315,30 @@ another_trim_round:
     // Int
     if (isdigit(l->content[l->cur])) {
         t->id = ALEXER_INT;
-        while (l->cur < l->size && isdigit(l->content[l->cur])) {
-            t->int_value = t->int_value*10 + l->content[l->cur] - '0';
-            t->end += 1;
-            alexer_chop_char(l);
+        
+        // Check for hex
+        if (l->content[l->cur] == '0' && 
+            l->cur + 1 < l->size && 
+            tolower(l->content[l->cur + 1]) == 'x') {  
+            
+            t->end += 2;
+            alexer_chop_chars(l, 2);  // skip 0x
+            
+            // Just parse the hex digits, worry about overflow later maybe
+            while (l->cur < l->size && alexer_is_hex_digit(l->content[l->cur])) {
+                char c = tolower(l->content[l->cur]);
+                int digit = isdigit(c) ? (c - '0') : (c - 'a' + 10);
+                t->int_value = (t->int_value << 4) | digit;
+                t->end += 1;
+                alexer_chop_char(l);
+            }
+        } else {
+            // Regular decimal number
+            while (l->cur < l->size && isdigit(l->content[l->cur])) {
+                t->int_value = t->int_value * 10 + (l->content[l->cur] - '0');
+                t->end += 1;
+                alexer_chop_char(l);
+            }
         }
         return true;
     }
@@ -485,6 +509,12 @@ void alexer_rewind(Alexer *l, Alexer_State s)
     l->cur = s.cur;
     l->bol = s.bol;
     l->row = s.row;
+}
+
+static bool alexer_is_hex_digit(char c) 
+{
+    c = tolower(c);
+    return isdigit(c) || (c >= 'a' && c <= 'f');
 }
 
 #endif // ALEXER_IMPLEMENTATION
